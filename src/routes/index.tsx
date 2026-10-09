@@ -53,7 +53,7 @@ function App() {
             <LevelSelect
               custom={custom}
               onBack={() => setScreen("scrMenu")}
-              onPick={(k) => start(LEVELS[k])}
+              onPick={(k) => start(LEVELS[k]!)}
               onCustom={() => setScreen("scrCreateSet")}
               onPlayCustom={() => start({ name: "Custom Set", pairs: custom })}
             />
@@ -193,13 +193,13 @@ function Game({ level, onQuit, onDone }: { level: { name: string; pairs: Pair[] 
   useEffect(() => { if (celebrate) return; const t = setInterval(() => setTime((s) => s + 1), 1000); return () => clearInterval(t); }, [celebrate]);
 
   const flip = (i: number) => {
-    if (open.length === 2 || open.includes(i) || matched.has(deck[i].pair)) return;
+    if (open.length === 2 || open.includes(i) || matched.has(deck[i]!.pair)) return;
     const next = [...open, i]; setOpen(next);
     if (next.length < 2) return;
     setMoves((m) => m + 1);
-    const [x, y] = next;
-    if (deck[x].pair === deck[y].pair) {
-      const m = new Set(matched); m.add(deck[x].pair);
+    const x = next[0]!, y = next[1]!;
+    if (deck[x]!.pair === deck[y]!.pair) {
+      const m = new Set(matched); m.add(deck[x]!.pair);
       setTimeout(() => {
         setMatched(m); setOpen([]); setScore((s) => s + 10);
         setToast("Match! +10"); setTimeout(() => setToast(""), 900);
