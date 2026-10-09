@@ -44,10 +44,10 @@ function App() {
   const start = (lvl: { name: string; pairs: Pair[] }) => { setActive(lvl); setScreen("game"); };
 
   return (
-    <main className="relative min-h-screen overflow-hidden">
+    <main className="relative grid min-h-screen place-items-center overflow-hidden p-0 sm:p-4">
       <Decor />
-      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col px-5 py-8">
-        <div key={screen} className="flex flex-1 flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="relative flex h-dvh w-full max-w-[420px] flex-col overflow-y-auto bg-card/85 px-5 py-6 backdrop-blur sm:h-[min(860px,calc(100dvh-2rem))] sm:rounded-3xl sm:border sm:shadow-card">
+        <div key={screen} className="relative flex flex-1 flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
           {screen === "scrMenu" && <Menu onPlay={() => setScreen("scrLevelSelect")} />}
           {screen === "scrLevelSelect" && (
             <LevelSelect
@@ -133,16 +133,16 @@ function LevelSelect({ custom, onBack, onPick, onCustom, onPlayCustom }: {
   custom: Pair[]; onBack: () => void; onPick: (k: string) => void; onCustom: () => void; onPlayCustom: () => void;
 }) {
   const Tile = ({ label, sub, onClick, icon }: { label: string; sub: string; onClick: () => void; icon: string }) => (
-    <button onClick={onClick} className="flex aspect-square flex-col items-center justify-center rounded-2xl bg-card p-4 shadow-card transition hover:-translate-y-1 active:scale-95">
-      <span className="text-4xl">{icon}</span>
-      <span className="mt-2 font-display text-lg font-bold">{label}</span>
-      <span className="text-xs text-muted-foreground">{sub}</span>
+    <button onClick={onClick} className="flex w-full items-center gap-4 rounded-2xl border bg-card p-4 text-left shadow-card transition hover:-translate-y-0.5 active:scale-95">
+      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-secondary text-3xl">{icon}</span>
+      <span className="min-w-0"><span className="block font-display text-lg font-bold">{label}</span>
+      <span className="block text-xs text-muted-foreground">{sub}</span></span>
     </button>
   );
   return (
     <>
       <Header title="Choose a Level" onBack={onBack} />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="mx-auto flex w-full flex-col gap-4">
         <Tile icon="🍎" label="Level 1" sub="6 pairs · pictures" onClick={() => onPick("Level_1")} />
         <Tile icon="📚" label="Level 2" sub="8 pairs · synonyms" onClick={() => onPick("Level_2")} />
         <Tile icon="✏️" label="Custom Set" sub="Create your own" onClick={onCustom} />
@@ -210,13 +210,13 @@ function Game({ level, onQuit, onDone }: { level: { name: string; pairs: Pair[] 
     }
   };
 
-  const cols = deck.length > 12 ? "grid-cols-4" : "grid-cols-3 sm:grid-cols-4";
+  const cols = "grid-cols-4";
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   return (
     <>
       <Header title={level.name} onBack={onQuit} />
-      <div className="mb-4 grid grid-cols-3 gap-2 text-center">
+      <div className="mb-4 grid w-full grid-cols-3 gap-2 text-center">
         {[["Score", score], ["Time", fmt(time)], ["Moves", moves]].map(([k, v]) => (
           <div key={k} className="rounded-xl bg-card py-2 shadow-card">
             <div className="text-xs text-muted-foreground">{k}</div>
@@ -224,26 +224,26 @@ function Game({ level, onQuit, onDone }: { level: { name: string; pairs: Pair[] 
           </div>
         ))}
       </div>
-      <div className={`grid ${cols} gap-3`}>
+      <div className={`mx-auto grid w-full ${cols} gap-2`}>
         {deck.map((c, i) => {
           const up = open.includes(i) || matched.has(c.pair);
           return (
-            <button key={c.id} onClick={() => flip(i)} className="perspective aspect-[3/4]" aria-label={up ? c.text : "Hidden card"}>
+            <button key={c.id} onClick={() => flip(i)} className="perspective aspect-[4/5]" aria-label={up ? c.text : "Hidden card"}>
               <div className={`preserve-3d relative h-full w-full transition-transform duration-500 ${up ? "rotate-y-180" : "hover:scale-105"}`}>
                 <div className="backface-hidden absolute inset-0 grid place-items-center rounded-xl bg-primary grid-pattern shadow-card">
                   <span className="grid h-8 w-8 place-items-center rounded-full bg-gold text-primary">★</span>
                 </div>
                 <div className={`backface-hidden rotate-y-180 absolute inset-0 grid place-items-center rounded-xl border-2 p-1 shadow-card ${matched.has(c.pair) ? "border-success bg-success/15" : "bg-card"}`}>
-                  <span className={`break-words text-center font-display font-bold ${[...c.text].length <= 2 ? "text-4xl" : "text-sm"}`}>{c.text}</span>
+                  <span className={`break-words text-center font-display font-bold ${[...c.text].length <= 2 ? "text-3xl" : "text-xs"}`}>{c.text}</span>
                 </div>
               </div>
             </button>
           );
         })}
       </div>
-      {toast && <div className="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-success px-5 py-2 font-bold text-primary-foreground shadow-card animate-in fade-in zoom-in">{toast}</div>}
+      {toast && <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-success px-5 py-2 font-bold text-primary-foreground shadow-card animate-in fade-in zoom-in">{toast}</div>}
       {celebrate && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-6 animate-in fade-in">
+        <div className="absolute inset-0 z-50 grid place-items-center rounded-2xl bg-foreground/40 p-4 animate-in fade-in">
           <div className="w-full max-w-xs rounded-2xl bg-card p-6 text-center shadow-card animate-in zoom-in">
             <div className="text-5xl">🎉</div>
             <h3 className="mt-2 text-2xl font-bold">Level Complete!</h3>
