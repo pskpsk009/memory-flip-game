@@ -152,7 +152,7 @@ function LevelSelect({ custom, onBack, onPick, onCustom, onPlayCustom }: {
   custom: Pair[]; onBack: () => void; onPick: (k: string) => void; onCustom: () => void; onPlayCustom: () => void;
 }) {
   const Tile = ({ label, sub, onClick, icon, badge }: { label: string; sub: string; onClick: () => void; icon: string; badge: string }) => (
-    <button onClick={onClick} className={`flex w-full items-center gap-4 rounded-2xl border bg-card px-4 py-2.5 text-left shadow-card transition hover:-translate-y-0.5 active:scale-95`}>
+    <button onClick={onClick} className={`flex w-full items-center gap-4 rounded-2xl border bg-card px-4 py-3.5 text-left shadow-card transition hover:-translate-y-0.5 active:scale-95`}>
       <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-2xl ${badge}`}>{icon}</span>
       <span className="min-w-0"><span className="block font-display text-lg font-bold">{label}</span>
       <span className="block text-xs text-muted-foreground">{sub}</span></span>
@@ -161,7 +161,7 @@ function LevelSelect({ custom, onBack, onPick, onCustom, onPlayCustom }: {
   return (
     <>
       <Header title="Choose a Level" onBack={onBack} />
-      <div className="mx-auto flex w-full flex-1 flex-col justify-between gap-3 pb-1">
+      <div className="mx-auto flex w-full flex-1 flex-col justify-center gap-4 pb-6">
         {Object.entries(LEVELS).map(([k, l]) => (
           <Tile key={k} icon={l.icon!} label={l.name} sub={l.sub!} badge={l.badge!} onClick={() => onPick(k)} />
         ))}
