@@ -161,7 +161,7 @@ function LevelSelect({ custom, onBack, onPick, onCustom, onPlayCustom }: {
   return (
     <>
       <Header title="Choose a Level" onBack={onBack} />
-      <div className="mx-auto flex w-full flex-col gap-3">
+      <div className="mx-auto flex w-full flex-1 flex-col justify-between gap-3 pb-1">
         {Object.entries(LEVELS).map(([k, l]) => (
           <Tile key={k} icon={l.icon!} label={l.name} sub={l.sub!} badge={l.badge!} onClick={() => onPick(k)} />
         ))}
