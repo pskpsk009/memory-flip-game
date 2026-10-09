@@ -18,17 +18,35 @@ export const Route = createFileRoute("/")({
 type Pair = { a: string; b: string };
 type Screen = "scrMenu" | "scrLevelSelect" | "game" | "scrCreateSet" | "scrGameOver";
 
-const LEVELS: Record<string, { name: string; pairs: Pair[] }> = {
-  Level_1: { name: "Level 1", pairs: [
+type Level = { name: string; pairs: Pair[]; icon?: string; sub?: string; badge?: string };
+const LEVELS: Record<string, Level> = {
+  Level_1: { name: "Level 1", icon: "🍎", sub: "6 pairs · pictures", badge: "bg-lv1", pairs: [
     { a: "🍎", b: "Apple" }, { a: "🐶", b: "Dog" }, { a: "☀️", b: "Sun" },
     { a: "🚗", b: "Car" }, { a: "🌳", b: "Tree" }, { a: "🐟", b: "Fish" },
   ]},
-  Level_2: { name: "Level 2", pairs: [
+  Level_2: { name: "Level 2", icon: "📚", sub: "8 pairs · synonyms", badge: "bg-lv2", pairs: [
     { a: "Happy", b: "Joyful" }, { a: "Big", b: "Huge" }, { a: "Fast", b: "Quick" },
     { a: "Smart", b: "Clever" }, { a: "Calm", b: "Peaceful" }, { a: "Brave", b: "Bold" },
     { a: "Tiny", b: "Small" }, { a: "Begin", b: "Start" },
   ]},
+  Level_3: { name: "Level 3", icon: "⚖️", sub: "10 pairs · antonyms", badge: "bg-lv3", pairs: [
+    { a: "Hot", b: "Cold" }, { a: "Up", b: "Down" }, { a: "Day", b: "Night" }, { a: "Open", b: "Close" },
+    { a: "Light", b: "Dark" }, { a: "Win", b: "Lose" }, { a: "Early", b: "Late" }, { a: "Full", b: "Empty" },
+    { a: "Rich", b: "Poor" }, { a: "Push", b: "Pull" },
+  ]},
+  Level_4: { name: "Level 4", icon: "🎓", sub: "12 pairs · advanced vocabulary", badge: "bg-lv4", pairs: [
+    { a: "Candid", b: "Honest" }, { a: "Vivid", b: "Bright" }, { a: "Frugal", b: "Thrifty" }, { a: "Eager", b: "Keen" },
+    { a: "Vast", b: "Immense" }, { a: "Hostile", b: "Unfriendly" }, { a: "Diligent", b: "Hardworking" }, { a: "Ample", b: "Plenty" },
+    { a: "Fragile", b: "Delicate" }, { a: "Obscure", b: "Unclear" }, { a: "Prudent", b: "Wise" }, { a: "Serene", b: "Tranquil" },
+  ]},
+  Level_5: { name: "Level 5", icon: "🏆", sub: "14 pairs · master challenge", badge: "bg-lv5", pairs: [
+    { a: "Ephemeral", b: "Fleeting" }, { a: "Ubiquitous", b: "Everywhere" }, { a: "Benevolent", b: "Kind" }, { a: "Lucid", b: "Clear" },
+    { a: "Tenacious", b: "Persistent" }, { a: "Arduous", b: "Difficult" }, { a: "Verbose", b: "Wordy" }, { a: "Meticulous", b: "Careful" },
+    { a: "Pragmatic", b: "Practical" }, { a: "Eloquent", b: "Fluent" }, { a: "Resilient", b: "Tough" }, { a: "Candor", b: "Frankness" },
+    { a: "Zealous", b: "Passionate" }, { a: "Novice", b: "Beginner" },
+  ]},
 };
+export const MAX_MISTAKES = 3;
 
 type Card = { id: number; pair: number; text: string };
 const shuffle = <T,>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5);
@@ -38,15 +56,16 @@ const buildDeck = (pairs: Pair[]): Card[] =>
 function App() {
   const [screen, setScreen] = useState<Screen>("scrMenu");
   const [custom, setCustom] = useState<Pair[]>([]);
+  const [round, setRound] = useState(0);
   const [active, setActive] = useState<{ name: string; pairs: Pair[] } | null>(null);
   const [result, setResult] = useState({ score: 0, time: 0, moves: 0 });
 
-  const start = (lvl: { name: string; pairs: Pair[] }) => { setActive(lvl); setScreen("game"); };
+  const start = (lvl: { name: string; pairs: Pair[] }) => { setActive(lvl); setRound((r) => r + 1); setScreen("game"); };
 
   return (
     <main className="relative grid min-h-screen place-items-center overflow-hidden p-0 sm:p-4">
       <Decor />
-      <div className="relative flex h-dvh w-full max-w-[420px] flex-col overflow-y-auto bg-card/85 px-5 py-6 backdrop-blur sm:h-[min(860px,calc(100dvh-2rem))] sm:rounded-3xl sm:border sm:shadow-card">
+      <div className="relative flex h-dvh w-full max-w-[440px] flex-col overflow-y-auto bg-frame px-5 py-5 sm:h-[min(750px,calc(100dvh-2rem))] sm:rounded-3xl sm:border sm:shadow-card">
         <div key={screen} className="relative flex flex-1 flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
           {screen === "scrMenu" && <Menu onPlay={() => setScreen("scrLevelSelect")} />}
           {screen === "scrLevelSelect" && (
@@ -63,7 +82,7 @@ function App() {
               onPlay={() => start({ name: "Custom Set", pairs: custom })} />
           )}
           {screen === "game" && active && (
-            <Game level={active} onQuit={() => setScreen("scrLevelSelect")}
+            <Game key={round} level={active} onRetry={() => start(active)} onQuit={() => setScreen("scrLevelSelect")}
               onDone={(r) => { setResult(r); setScreen("scrGameOver"); }} />
           )}
           {screen === "scrGameOver" && active && (
@@ -109,7 +128,7 @@ const Btn = ({ variant = "primary", className = "", ...p }: React.ButtonHTMLAttr
 
 function Header({ title, onBack }: { title: string; onBack: () => void }) {
   return (
-    <div className="mb-6 flex items-center gap-3">
+    <div className="mb-4 flex items-center gap-3">
       <Btn variant="ghost" className="!px-4 !py-2" onClick={onBack}>←</Btn>
       <h2 className="truncate text-2xl font-bold">{title}</h2>
     </div>
@@ -132,9 +151,9 @@ function Menu({ onPlay }: { onPlay: () => void }) {
 function LevelSelect({ custom, onBack, onPick, onCustom, onPlayCustom }: {
   custom: Pair[]; onBack: () => void; onPick: (k: string) => void; onCustom: () => void; onPlayCustom: () => void;
 }) {
-  const Tile = ({ label, sub, onClick, icon }: { label: string; sub: string; onClick: () => void; icon: string }) => (
-    <button onClick={onClick} className="flex w-full items-center gap-4 rounded-2xl border bg-card p-4 text-left shadow-card transition hover:-translate-y-0.5 active:scale-95">
-      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-secondary text-3xl">{icon}</span>
+  const Tile = ({ label, sub, onClick, icon, badge }: { label: string; sub: string; onClick: () => void; icon: string; badge: string }) => (
+    <button onClick={onClick} className={`flex w-full items-center gap-4 rounded-2xl border bg-card px-4 py-2.5 text-left shadow-card transition hover:-translate-y-0.5 active:scale-95`}>
+      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-2xl ${badge}`}>{icon}</span>
       <span className="min-w-0"><span className="block font-display text-lg font-bold">{label}</span>
       <span className="block text-xs text-muted-foreground">{sub}</span></span>
     </button>
@@ -142,11 +161,12 @@ function LevelSelect({ custom, onBack, onPick, onCustom, onPlayCustom }: {
   return (
     <>
       <Header title="Choose a Level" onBack={onBack} />
-      <div className="mx-auto flex w-full flex-col gap-4">
-        <Tile icon="🍎" label="Level 1" sub="6 pairs · pictures" onClick={() => onPick("Level_1")} />
-        <Tile icon="📚" label="Level 2" sub="8 pairs · synonyms" onClick={() => onPick("Level_2")} />
-        <Tile icon="✏️" label="Custom Set" sub="Create your own" onClick={onCustom} />
-        {custom.length >= 2 && <Tile icon="▶️" label="Play Custom" sub={`${custom.length} pairs`} onClick={onPlayCustom} />}
+      <div className="mx-auto flex w-full flex-col gap-3">
+        {Object.entries(LEVELS).map(([k, l]) => (
+          <Tile key={k} icon={l.icon!} label={l.name} sub={l.sub!} badge={l.badge!} onClick={() => onPick(k)} />
+        ))}
+        <Tile icon="✏️" label="Custom Set" sub={custom.length >= 2 ? `${custom.length} pairs · tap ▶ to play` : "Create your own"} badge="bg-lvc" onClick={onCustom} />
+        {custom.length >= 2 && <Tile icon="▶️" label="Play Custom" sub={`${custom.length} pairs`} badge="bg-lvc" onClick={onPlayCustom} />}
       </div>
     </>
   );
@@ -180,7 +200,7 @@ function CreateSet({ pairs, setPairs, onBack, onPlay }: { pairs: Pair[]; setPair
   );
 }
 
-function Game({ level, onQuit, onDone }: { level: { name: string; pairs: Pair[] }; onQuit: () => void; onDone: (r: { score: number; time: number; moves: number }) => void }) {
+function Game({ level, onQuit, onDone, onRetry }: { level: { name: string; pairs: Pair[] }; onQuit: () => void; onRetry: () => void; onDone: (r: { score: number; time: number; moves: number }) => void }) {
   const deck = useMemo(() => buildDeck(level.pairs), [level]);
   const [open, setOpen] = useState<number[]>([]);
   const [matched, setMatched] = useState<Set<number>>(new Set());
@@ -189,11 +209,13 @@ function Game({ level, onQuit, onDone }: { level: { name: string; pairs: Pair[] 
   const [time, setTime] = useState(0);
   const [celebrate, setCelebrate] = useState(false);
   const [toast, setToast] = useState("");
+  const [mistakes, setMistakes] = useState(0);
+  const lost = mistakes >= MAX_MISTAKES;
 
-  useEffect(() => { if (celebrate) return; const t = setInterval(() => setTime((s) => s + 1), 1000); return () => clearInterval(t); }, [celebrate]);
+  useEffect(() => { if (celebrate || lost) return; const t = setInterval(() => setTime((s) => s + 1), 1000); return () => clearInterval(t); }, [celebrate, lost]);
 
   const flip = (i: number) => {
-    if (open.length === 2 || open.includes(i) || matched.has(deck[i]!.pair)) return;
+    if (lost || open.length === 2 || open.includes(i) || matched.has(deck[i]!.pair)) return;
     const next = [...open, i]; setOpen(next);
     if (next.length < 2) return;
     setMoves((m) => m + 1);
@@ -206,35 +228,37 @@ function Game({ level, onQuit, onDone }: { level: { name: string; pairs: Pair[] 
         if (m.size === level.pairs.length) setCelebrate(true);
       }, 400);
     } else {
-      setTimeout(() => { setOpen([]); setScore((s) => Math.max(0, s - 1)); }, 900);
+      setTimeout(() => { setOpen([]); setScore((s) => Math.max(0, s - 1)); setMistakes((m) => m + 1); }, 900);
     }
   };
 
-  const cols = "grid-cols-4";
+  const n = deck.length;
+  const cols = n > 20 ? "grid-cols-6" : n > 16 ? "grid-cols-5" : "grid-cols-4";
+  const small = n > 16;
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   return (
     <>
       <Header title={level.name} onBack={onQuit} />
-      <div className="mb-4 grid w-full grid-cols-3 gap-2 text-center">
-        {[["Score", score], ["Time", fmt(time)], ["Moves", moves]].map(([k, v]) => (
-          <div key={k} className="rounded-xl bg-card py-2 shadow-card">
-            <div className="text-xs text-muted-foreground">{k}</div>
-            <div className="font-display text-xl font-bold">{v}</div>
+      <div className="mb-3 grid w-full grid-cols-4 gap-2 text-center">
+        {[["Score", score], ["Time", fmt(time)], ["Moves", moves], ["Lives", "♥".repeat(MAX_MISTAKES - Math.min(mistakes, MAX_MISTAKES)) + "♡".repeat(Math.min(mistakes, MAX_MISTAKES))]].map(([k, v]) => (
+          <div key={k} className="rounded-xl bg-card py-1.5 shadow-card">
+            <div className="text-[10px] text-muted-foreground">{k === "Lives" ? `Mistakes ${mistakes}/${MAX_MISTAKES}` : k}</div>
+            <div className={`font-display text-lg font-bold ${k === "Lives" ? "text-danger" : ""}`}>{v}</div>
           </div>
         ))}
       </div>
-      <div className={`mx-auto grid w-full ${cols} gap-2`}>
+      <div className={`mx-auto grid w-full ${cols} ${small ? "gap-1.5" : "gap-2"}`}>
         {deck.map((c, i) => {
           const up = open.includes(i) || matched.has(c.pair);
           return (
             <button key={c.id} onClick={() => flip(i)} className="perspective aspect-[4/5]" aria-label={up ? c.text : "Hidden card"}>
               <div className={`preserve-3d relative h-full w-full transition-transform duration-500 ${up ? "rotate-y-180" : "hover:scale-105"}`}>
                 <div className="backface-hidden absolute inset-0 grid place-items-center rounded-xl bg-primary grid-pattern shadow-card">
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-gold text-primary">★</span>
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-gold text-primary">★</span>
                 </div>
                 <div className={`backface-hidden rotate-y-180 absolute inset-0 grid place-items-center rounded-xl border-2 p-1 shadow-card ${matched.has(c.pair) ? "border-success bg-success/15" : "bg-card"}`}>
-                  <span className={`break-words text-center font-display font-bold ${[...c.text].length <= 2 ? "text-3xl" : "text-xs"}`}>{c.text}</span>
+                  <span className={`break-words text-center font-display font-bold ${[...c.text].length <= 2 ? (small ? "text-2xl" : "text-3xl") : small ? "text-[9px] leading-tight" : "text-xs"}`}>{c.text}</span>
                 </div>
               </div>
             </button>
@@ -242,6 +266,17 @@ function Game({ level, onQuit, onDone }: { level: { name: string; pairs: Pair[] 
         })}
       </div>
       {toast && <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-success px-5 py-2 font-bold text-primary-foreground shadow-card animate-in fade-in zoom-in">{toast}</div>}
+      {lost && (
+        <div className="absolute inset-0 z-50 grid place-items-center rounded-2xl bg-foreground/40 p-4 animate-in fade-in">
+          <div className="w-full max-w-xs rounded-2xl bg-card p-6 text-center shadow-card animate-in zoom-in">
+            <div className="text-5xl">💔</div>
+            <h3 className="mt-2 text-2xl font-bold">Game Over</h3>
+            <p className="mt-1 text-muted-foreground">{MAX_MISTAKES} mistakes — score {score}</p>
+            <Btn className="mt-5 w-full" onClick={onRetry}>Try Again</Btn>
+            <Btn variant="ghost" className="mt-3 w-full" onClick={onQuit}>Level Select</Btn>
+          </div>
+        </div>
+      )}
       {celebrate && (
         <div className="absolute inset-0 z-50 grid place-items-center rounded-2xl bg-foreground/40 p-4 animate-in fade-in">
           <div className="w-full max-w-xs rounded-2xl bg-card p-6 text-center shadow-card animate-in zoom-in">
