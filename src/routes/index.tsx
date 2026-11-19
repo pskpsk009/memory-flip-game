@@ -18,38 +18,45 @@ export const Route = createFileRoute("/")({
 type Pair = { a: string; b: string };
 type Screen = "scrMenu" | "scrLevelSelect" | "game" | "scrCreateSet" | "scrGameOver";
 
-type Level = { name: string; pairs: Pair[]; icon?: string; sub?: string; badge?: string };
+type Level = { name: string; pairs: Pair[]; icon?: string; sub?: string; badge?: string; lives?: number };
 const LEVELS: Record<string, Level> = {
-  Level_1: { name: "Level 1", icon: "🍎", sub: "6 pairs · pictures", badge: "bg-lv1", pairs: [
+  Level_1: { name: "Level 1", icon: "🍎", sub: "6 pairs · pictures · unlimited hearts", badge: "bg-lv1", pairs: [
     { a: "🍎", b: "Apple" }, { a: "🐶", b: "Dog" }, { a: "☀️", b: "Sun" },
     { a: "🚗", b: "Car" }, { a: "🌳", b: "Tree" }, { a: "🐟", b: "Fish" },
   ]},
-  Level_2: { name: "Level 2", icon: "📚", sub: "8 pairs · synonyms", badge: "bg-lv2", pairs: [
+  Level_2: { name: "Level 2", icon: "📚", sub: "8 pairs · synonyms · 3 hearts", badge: "bg-lv2", lives: 6, pairs: [
     { a: "Happy", b: "Joyful" }, { a: "Big", b: "Huge" }, { a: "Fast", b: "Quick" },
     { a: "Smart", b: "Clever" }, { a: "Calm", b: "Peaceful" }, { a: "Brave", b: "Bold" },
     { a: "Tiny", b: "Small" }, { a: "Begin", b: "Start" },
   ]},
-  Level_3: { name: "Level 3", icon: "⚖️", sub: "10 pairs · antonyms", badge: "bg-lv3", pairs: [
+  Level_3: { name: "Level 3", icon: "⚖️", sub: "10 pairs · antonyms · 4 hearts", badge: "bg-lv3", lives: 8, pairs: [
     { a: "Hot", b: "Cold" }, { a: "Up", b: "Down" }, { a: "Day", b: "Night" }, { a: "Open", b: "Close" },
     { a: "Light", b: "Dark" }, { a: "Win", b: "Lose" }, { a: "Early", b: "Late" }, { a: "Full", b: "Empty" },
     { a: "Rich", b: "Poor" }, { a: "Push", b: "Pull" },
   ]},
-  Level_4: { name: "Level 4", icon: "🎓", sub: "12 pairs · advanced vocabulary", badge: "bg-lv4", pairs: [
+  Level_4: { name: "Level 4", icon: "🎓", sub: "12 pairs · advanced vocabulary · 5 hearts", badge: "bg-lv4", lives: 10, pairs: [
     { a: "Candid", b: "Honest" }, { a: "Vivid", b: "Bright" }, { a: "Frugal", b: "Thrifty" }, { a: "Eager", b: "Keen" },
     { a: "Vast", b: "Immense" }, { a: "Hostile", b: "Unfriendly" }, { a: "Diligent", b: "Hardworking" }, { a: "Ample", b: "Plenty" },
     { a: "Fragile", b: "Delicate" }, { a: "Obscure", b: "Unclear" }, { a: "Prudent", b: "Wise" }, { a: "Serene", b: "Tranquil" },
   ]},
-  Level_5: { name: "Level 5", icon: "🏆", sub: "14 pairs · master challenge", badge: "bg-lv5", pairs: [
+  Level_5: { name: "Level 5", icon: "🏆", sub: "14 pairs · master challenge · 6 hearts", badge: "bg-lv5", lives: 12, pairs: [
     { a: "Ephemeral", b: "Fleeting" }, { a: "Ubiquitous", b: "Everywhere" }, { a: "Benevolent", b: "Kind" }, { a: "Lucid", b: "Clear" },
     { a: "Tenacious", b: "Persistent" }, { a: "Arduous", b: "Difficult" }, { a: "Verbose", b: "Wordy" }, { a: "Meticulous", b: "Careful" },
     { a: "Pragmatic", b: "Practical" }, { a: "Eloquent", b: "Fluent" }, { a: "Resilient", b: "Tough" }, { a: "Candor", b: "Frankness" },
     { a: "Zealous", b: "Passionate" }, { a: "Novice", b: "Beginner" },
   ]},
 };
-export const MAX_MISTAKES = 3;
+// Lives scale with board size: even perfect play needs about 0.6 wrong guesses per pair,
+// so a fixed 3 lives made big boards nearly unwinnable. No `lives` = unlimited.
+// Kept even so custom sets show whole hearts.
+const customLives = (pairs: number) => Math.max(4, Math.ceil(pairs / 2) * 2);
 
 type Card = { id: number; pair: number; text: string };
 const shuffle = <T,>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5);
+// Combo: each match in a row raises the multiplier (capped); any mistake resets it.
+const BASE_POINTS = 10;
+const MAX_MULTIPLIER = 5;
+const comboPoints = (combo: number) => BASE_POINTS * Math.min(Math.max(1, combo), MAX_MULTIPLIER);
 const buildDeck = (pairs: Pair[]): Card[] =>
   shuffle(pairs.flatMap((p, i) => [{ id: i * 2, pair: i, text: p.a }, { id: i * 2 + 1, pair: i, text: p.b }]));
 
@@ -57,10 +64,10 @@ function App() {
   const [screen, setScreen] = useState<Screen>("scrMenu");
   const [custom, setCustom] = useState<Pair[]>([]);
   const [round, setRound] = useState(0);
-  const [active, setActive] = useState<{ name: string; pairs: Pair[] } | null>(null);
-  const [result, setResult] = useState({ score: 0, time: 0, moves: 0 });
+  const [active, setActive] = useState<Level | null>(null);
+  const [result, setResult] = useState({ score: 0, time: 0, moves: 0, bestCombo: 0 });
 
-  const start = (lvl: { name: string; pairs: Pair[] }) => { setActive(lvl); setRound((r) => r + 1); setScreen("game"); };
+  const start = (lvl: Level) => { setActive(lvl); setRound((r) => r + 1); setScreen("game"); };
 
   return (
     <main className="relative grid min-h-screen place-items-center overflow-hidden p-0 sm:p-4">
@@ -74,12 +81,12 @@ function App() {
               onBack={() => setScreen("scrMenu")}
               onPick={(k) => start(LEVELS[k]!)}
               onCustom={() => setScreen("scrCreateSet")}
-              onPlayCustom={() => start({ name: "Custom Set", pairs: custom })}
+              onPlayCustom={() => start({ name: "Custom Set", pairs: custom, lives: customLives(custom.length) })}
             />
           )}
           {screen === "scrCreateSet" && (
             <CreateSet pairs={custom} setPairs={setCustom} onBack={() => setScreen("scrLevelSelect")}
-              onPlay={() => start({ name: "Custom Set", pairs: custom })} />
+              onPlay={() => start({ name: "Custom Set", pairs: custom, lives: customLives(custom.length) })} />
           )}
           {screen === "game" && active && (
             <Game key={round} level={active} onRetry={() => start(active)} onQuit={() => setScreen("scrLevelSelect")}
@@ -200,7 +207,9 @@ function CreateSet({ pairs, setPairs, onBack, onPlay }: { pairs: Pair[]; setPair
   );
 }
 
-function Game({ level, onQuit, onDone, onRetry }: { level: { name: string; pairs: Pair[] }; onQuit: () => void; onRetry: () => void; onDone: (r: { score: number; time: number; moves: number }) => void }) {
+type Result = { score: number; time: number; moves: number; bestCombo: number };
+
+function Game({ level, onQuit, onDone, onRetry }: { level: Level; onQuit: () => void; onRetry: () => void; onDone: (r: Result) => void }) {
   const deck = useMemo(() => buildDeck(level.pairs), [level]);
   const [open, setOpen] = useState<number[]>([]);
   const [matched, setMatched] = useState<Set<number>>(new Set());
@@ -210,7 +219,11 @@ function Game({ level, onQuit, onDone, onRetry }: { level: { name: string; pairs
   const [celebrate, setCelebrate] = useState(false);
   const [toast, setToast] = useState("");
   const [mistakes, setMistakes] = useState(0);
-  const lost = mistakes >= MAX_MISTAKES;
+  const [combo, setCombo] = useState(0);
+  const [bestCombo, setBestCombo] = useState(0);
+  const [comboBroken, setComboBroken] = useState(false);
+  const max = level.lives;
+  const lost = max !== undefined && mistakes >= max;
 
   useEffect(() => { if (celebrate || lost) return; const t = setInterval(() => setTime((s) => s + 1), 1000); return () => clearInterval(t); }, [celebrate, lost]);
 
@@ -222,13 +235,22 @@ function Game({ level, onQuit, onDone, onRetry }: { level: { name: string; pairs
     const x = next[0]!, y = next[1]!;
     if (deck[x]!.pair === deck[y]!.pair) {
       const m = new Set(matched); m.add(deck[x]!.pair);
+      // No other flip can resolve until this one does (open.length === 2 blocks input), so `combo` is current.
+      const nextCombo = combo + 1;
+      const pts = comboPoints(nextCombo);
       setTimeout(() => {
-        setMatched(m); setOpen([]); setScore((s) => s + 10);
-        setToast("Match! +10"); setTimeout(() => setToast(""), 900);
+        setMatched(m); setOpen([]); setScore((s) => s + pts);
+        setCombo(nextCombo); setBestCombo((b) => Math.max(b, nextCombo));
+        setToast(nextCombo >= 2 ? `🔥 Combo x${Math.min(nextCombo, MAX_MULTIPLIER)}! +${pts}` : `Match! +${pts}`);
+        setTimeout(() => setToast(""), 900);
         if (m.size === level.pairs.length) setCelebrate(true);
       }, 400);
     } else {
-      setTimeout(() => { setOpen([]); setScore((s) => Math.max(0, s - 1)); setMistakes((m) => m + 1); }, 900);
+      const hadCombo = combo >= 2;
+      setTimeout(() => {
+        setOpen([]); setScore((s) => Math.max(0, s - 1)); setMistakes((m) => m + 1); setCombo(0);
+        if (hadCombo) { setComboBroken(true); setTimeout(() => setComboBroken(false), 900); }
+      }, 900);
     }
   };
 
@@ -241,12 +263,23 @@ function Game({ level, onQuit, onDone, onRetry }: { level: { name: string; pairs
     <>
       <Header title={level.name} onBack={onQuit} />
       <div className="mb-3 grid w-full grid-cols-4 gap-2 text-center">
-        {[["Score", score], ["Time", fmt(time)], ["Moves", moves], ["Lives", "♥".repeat(MAX_MISTAKES - Math.min(mistakes, MAX_MISTAKES)) + "♡".repeat(Math.min(mistakes, MAX_MISTAKES))]].map(([k, v]) => (
-          <div key={k} className="rounded-xl bg-card py-1.5 shadow-card">
-            <div className="text-[10px] text-muted-foreground">{k === "Lives" ? `Mistakes ${mistakes}/${MAX_MISTAKES}` : k}</div>
+        {[["Score", score], ["Time", fmt(time)], ["Moves", moves], ["Lives", max === undefined ? "∞" : <Hearts halves={max} left={max - mistakes} />]].map(([k, v]) => (
+          <div key={k as string} className="rounded-xl bg-card py-1.5 shadow-card">
+            <div className="text-[10px] text-muted-foreground">{k === "Lives" ? (max === undefined ? `Mistakes ${mistakes}` : `Mistakes ${mistakes}/${max}`) : k}</div>
             <div className={`font-display text-lg font-bold ${k === "Lives" ? "text-danger" : ""}`}>{v}</div>
           </div>
         ))}
+      </div>
+      <div className="mb-3 flex h-7 items-center justify-center">
+        {comboBroken ? (
+          <span key="broken" className="rounded-full bg-danger/15 px-3 py-1 text-sm font-bold text-danger animate-in fade-in zoom-in">Combo lost!</span>
+        ) : combo >= 2 ? (
+          <span key={combo} className="rounded-full bg-gold px-3 py-1 text-sm font-bold text-primary shadow-card animate-in zoom-in">
+            🔥 Combo {combo} · x{Math.min(combo, MAX_MULTIPLIER)} points
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">Match in a row to build a combo</span>
+        )}
       </div>
       <div className={`mx-auto grid w-full ${cols} ${small ? "gap-1.5" : "gap-2"}`}>
         {deck.map((c, i) => {
@@ -271,7 +304,7 @@ function Game({ level, onQuit, onDone, onRetry }: { level: { name: string; pairs
           <div className="w-full max-w-xs rounded-2xl bg-card p-6 text-center shadow-card animate-in zoom-in">
             <div className="text-5xl">💔</div>
             <h3 className="mt-2 text-2xl font-bold">Game Over</h3>
-            <p className="mt-1 text-muted-foreground">{MAX_MISTAKES} mistakes — score {score}</p>
+            <p className="mt-1 text-muted-foreground">{max} mistakes — score {score}</p>
             <Btn className="mt-5 w-full" onClick={onRetry}>Try Again</Btn>
             <Btn variant="ghost" className="mt-3 w-full" onClick={onQuit}>Level Select</Btn>
           </div>
@@ -283,7 +316,7 @@ function Game({ level, onQuit, onDone, onRetry }: { level: { name: string; pairs
             <div className="text-5xl">🎉</div>
             <h3 className="mt-2 text-2xl font-bold">Level Complete!</h3>
             <p className="mt-1 text-muted-foreground">All pairs matched in {fmt(time)}</p>
-            <Btn className="mt-5 w-full" onClick={() => onDone({ score, time, moves })}>See Results</Btn>
+            <Btn className="mt-5 w-full" onClick={() => onDone({ score, time, moves, bestCombo })}>See Results</Btn>
           </div>
         </div>
       )}
@@ -291,15 +324,33 @@ function Game({ level, onQuit, onDone, onRetry }: { level: { name: string; pairs
   );
 }
 
-function GameOver({ score, time, moves, level, onReplay, onMenu }: { score: number; time: number; moves: number; level: string; onReplay: () => void; onMenu: () => void }) {
+// One heart = two lives, so each mistake empties half a heart.
+function Hearts({ halves, left }: { halves: number; left: number }) {
+  const count = Math.ceil(halves / 2);
+  return (
+    <span className={`inline-flex justify-center gap-px leading-none ${count > 4 ? "text-sm" : "text-base"}`} aria-label={`${Math.max(0, left) / 2} of ${halves / 2} hearts left`}>
+      {Array.from({ length: count }, (_, i) => {
+        const fill = Math.min(2, Math.max(0, left - i * 2)); // 0, 1 or 2 halves
+        return (
+          <span key={i} className="relative inline-block">
+            <span className="text-danger/20">♥</span>
+            <span className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: `${fill * 50}%` }}>♥</span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+function GameOver({ score, time, moves, bestCombo, level, onReplay, onMenu }: Result & { level: string; onReplay: () => void; onMenu: () => void }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center text-center">
       <Logo />
       <h2 className="mt-4 text-3xl font-bold">Well done!</h2>
       <p className="text-muted-foreground">{level}</p>
-      <div className="mt-6 grid w-full grid-cols-3 gap-3">
-        {[["Score", score], ["Time", `${time}s`], ["Moves", moves]].map(([k, v]) => (
-          <div key={k} className="rounded-2xl bg-card p-4 shadow-card">
+      <div className="mt-6 grid w-full grid-cols-4 gap-2">
+        {[["Score", score], ["Time", `${time}s`], ["Moves", moves], ["Best Combo", bestCombo]].map(([k, v]) => (
+          <div key={k} className="rounded-2xl bg-card px-2 py-4 shadow-card">
             <div className="text-xs text-muted-foreground">{k}</div>
             <div className="font-display text-2xl font-bold text-primary">{v}</div>
           </div>
